@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privatus Analytics – Block my visits</title>
+  <link rel="stylesheet" href="../ui.css">
+</head>
+<body class="popup">
+  <header>
+    <img src="../icons/icon-32.png" alt="" width="20" height="20">
+    <strong>Block my visits</strong>
+  </header>
+
+  <main id="main" hidden>
+    <p class="host" id="host"></p>
+    <label class="toggle">
+      <input type="checkbox" id="toggle">
+      <span>Don't count my visits on this site</span>
+    </label>
+    <p class="hint" id="hint"></p>
+    <dl class="stats" id="stats" hidden>
+      <dt>Tracker requests blocked on this tab</dt><dd id="blocked">–</dd>
+      <dt>Opted-out page loads on this tab</dt><dd id="skips">–</dd>
+    </dl>
+  </main>
+
+  <p id="unsupported" class="hint" hidden>This page can't be opted out (only http:// and https:// sites).</p>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <footer><a href="#" id="options">Manage sites &amp; endpoints</a></footer>
+  <script src="../lib/core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

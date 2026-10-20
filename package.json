@@ -1,0 +1,12 @@
+{
+  "name": "@privatus/browser-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Privatus Analytics – Block my visits: MV3 WebExtension for Chrome and Firefox.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/build.mjs --zip",
+    "test": "node --test"
+  }
+}

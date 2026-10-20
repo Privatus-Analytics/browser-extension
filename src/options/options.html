@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privatus Analytics – Block my visits: settings</title>
+  <link rel="stylesheet" href="../ui.css">
+</head>
+<body class="options">
+  <h1>Privatus Analytics – Block my visits</h1>
+  <p class="lead">Stop your own visits from being counted in Privatus Analytics on the sites you list.
+    Everything stays in this browser's extension storage. No telemetry, no remote code.</p>
+
+  <section>
+    <h2>Sites</h2>
+    <form id="add-form" class="row">
+      <input id="add-input" type="text" placeholder="example.com" autocomplete="off" aria-label="Domain to add">
+      <button type="submit">Add</button>
+    </form>
+    <p id="add-error" class="error" role="alert" hidden></p>
+    <ul id="domains" class="list"></ul>
+    <p id="empty" class="hint">No sites yet. Add one here or use the toolbar button on the site.</p>
+  </section>
+
+  <section>
+    <h2>How visits are excluded</h2>
+    <label class="toggle"><input type="checkbox" id="modeLocalStorage">
+      <span><strong>Opt-out flag</strong> — sets <code>localStorage.privatus_optout = "1"</code> on the site so the Privatus Analytics script stops sending (needs access to that site; asked when you add it).</span></label>
+    <label class="toggle"><input type="checkbox" id="modeBlockRequests">
+      <span><strong>Block tracker requests</strong> — blocks POST requests to the endpoints below when they come from a listed site (works even without site access).</span></label>
+  </section>
+
+  <section>
+    <h2>Tracker endpoints</h2>
+    <p class="hint">One per line. A path (<code>/api/event</code>), a host + path (<code>privatusanalytics.com/api/event</code>),
+      a full URL, or a raw <a href="https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest#property-RuleCondition-urlFilter" target="_blank" rel="noopener">urlFilter</a>
+      (<code>/api/event^</code> is the default).</p>
+    <textarea id="patterns" rows="5" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="save-patterns" type="button">Save endpoints</button>
+      <button id="reset-patterns" type="button" class="secondary">Reset to default</button>
+      <span id="patterns-status" class="hint" role="status"></span>
+    </div>
+  </section>
+
+  <script src="../lib/core.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
