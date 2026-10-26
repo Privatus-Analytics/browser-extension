@@ -55,7 +55,10 @@ test('endpointToUrlFilter', () => {
   assert.equal(Core.endpointToUrlFilter('stats.example.com/api/event'), '||stats.example.com/api/event');
   assert.equal(Core.endpointToUrlFilter('stats.example.com'), '||stats.example.com/');
   assert.equal(Core.endpointToUrlFilter('https://stats.example.com/e'), '|https://stats.example.com/e');
-  assert.equal(Core.endpointToUrlFilter('||*.example.com/e'), '||.example.com/e');
+  assert.equal(Core.endpointToUrlFilter('||*.example.com/e'), '||example.com/e');
+  assert.equal(Core.endpointToUrlFilter('||*example.com/e'), '||example.com/e');
+  assert.equal(Core.endpointToUrlFilter('stats.example.com:8443/api/event'), '||stats.example.com:8443/api/event');
+  assert.equal(Core.endpointToUrlFilter('stats.example.com:8443'), '||stats.example.com:8443/');
   for (const bad of ['', ' ', 'has space/x', 'ünï/x', 'nodot/x', '"x"']) {
     assert.equal(Core.endpointToUrlFilter(bad), null, bad);
   }
@@ -111,6 +114,33 @@ test('add/remove domains and cleanup', () => {
   assert.equal(Core.pruneCleanup(s, 1000).cleanup.length, 1);
 });
 
+test('planContentScripts: opt-out script on listed sites, cleanup elsewhere', () => {
+  const settings = {
+    domains: [{ domain: 'example.com' }, { domain: 'blog.shop.com' }, { domain: 'nogrant.com' }],
+    cleanup: [{ domain: 'shop.com', removedAt: 1 }, { domain: 'old.example.com', removedAt: 1 }],
+    modeLocalStorage: true
+  };
+  const granted = ['example.com', 'blog.shop.com', 'shop.com', 'old.example.com'];
+  const plan = Core.planContentScripts(settings, granted);
+  assert.deepEqual(plan.map((p) => p.id), [Core.CONTENT_SCRIPT_ID, Core.CLEANUP_SCRIPT_ID]);
+  assert.deepEqual(plan[0].js, ['content/optout.js']);
+  assert.deepEqual(plan[0].matches, ['*://example.com/*', '*://*.example.com/*', '*://blog.shop.com/*', '*://*.blog.shop.com/*']);
+  // old.example.com is still covered by the listed example.com, so no cleanup there;
+  // the removed shop.com is cleaned up except on the listed blog.shop.com.
+  assert.deepEqual(plan[1].js, ['content/cleanup.js']);
+  assert.deepEqual(plan[1].matches, ['*://shop.com/*', '*://*.shop.com/*']);
+  assert.deepEqual(plan[1].excludeMatches, plan[0].matches);
+
+  // Opt-out flag mode off: listed sites get the cleanup script instead.
+  const off = Core.planContentScripts({ ...settings, modeLocalStorage: false }, granted);
+  assert.deepEqual(off.map((p) => p.id), [Core.CLEANUP_SCRIPT_ID]);
+  assert.ok(off[0].matches.includes('*://*.example.com/*'));
+  assert.ok(off[0].matches.includes('*://*.shop.com/*'));
+  assert.equal(off[0].excludeMatches, undefined);
+
+  assert.deepEqual(Core.planContentScripts({ domains: [{ domain: 'a.com' }] }, []), [], 'no site access, no scripts');
+});
+
 test('parsePatternList and badgeText', () => {
   assert.deepEqual(Core.parsePatternList('/api/event^\n# comment\n\nstats.x.com/e # pixel\nbad one\n/api/event^'),
     { valid: ['/api/event^', 'stats.x.com/e'], invalid: ['bad one'] });
@@ -130,7 +160,7 @@ test('manifest is valid MV3 for Chrome and Firefox', async () => {
   for (const p of ['storage', 'declarativeNetRequest', 'scripting', 'activeTab']) assert.ok(m.permissions.includes(p), p);
   // every referenced file exists
   const files = [m.background.service_worker, ...m.background.scripts, m.action.default_popup, m.options_ui.page,
-    ...Object.values(m.icons), ...Object.values(m.action.default_icon), 'content/optout.js'];
+    ...Object.values(m.icons), ...Object.values(m.action.default_icon), 'content/optout.js', 'content/cleanup.js'];
   for (const f of files) assert.ok(fs.existsSync(path.join(src, f)), f);
 
   const { chromeManifest, firefoxManifest } = await import('../scripts/build.mjs');

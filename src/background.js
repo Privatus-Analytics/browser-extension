@@ -28,15 +28,19 @@ async function syncRules(settings) {
   await dnr.updateDynamicRules(diff);
 }
 
-/** Registers the opt-out content script for listed domains we have access to. */
+/** Registers the opt-out and cleanup content scripts for domains we have access to. */
 async function syncContentScript(settings) {
   if (!api.scripting || !api.scripting.registerContentScripts) return;
   try {
-    await api.scripting.unregisterContentScripts({ ids: [Core.CONTENT_SCRIPT_ID] });
-  } catch (e) { /* not registered */ }
+    // Unregistering an id that is not registered fails the whole call, so
+    // only ask for the ones that are there.
+    var ours = [Core.CONTENT_SCRIPT_ID, Core.CLEANUP_SCRIPT_ID];
+    var ids = (await api.scripting.getRegisteredContentScripts())
+      .map(function (c) { return c.id; })
+      .filter(function (id) { return ours.indexOf(id) >= 0; });
+    if (ids.length) await api.scripting.unregisterContentScripts({ ids: ids });
+  } catch (e) { /* nothing registered */ }
 
-  // Listed domains (mode A) + removed domains awaiting cleanup. When mode A is
-  // off the script still runs on listed domains to remove a previously set flag.
   var candidates = settings.domains.concat(settings.cleanup);
   var granted = [];
   for (var i = 0; i < candidates.length; i++) {
@@ -44,17 +48,13 @@ async function syncContentScript(settings) {
     if (!origins.length) continue;
     var ok = false;
     try { ok = await api.permissions.contains({ origins: origins }); } catch (e) { ok = false; }
-    if (ok) granted = granted.concat(origins);
+    if (ok) granted.push(candidates[i].domain);
   }
-  if (!granted.length) return;
-  await api.scripting.registerContentScripts([{
-    id: Core.CONTENT_SCRIPT_ID,
-    matches: granted,
-    js: ['content/optout.js'],
-    runAt: 'document_start',
-    allFrames: false,
-    persistAcrossSessions: true
-  }]);
+  var plan = Core.planContentScripts(settings, granted);
+  if (!plan.length) return;
+  await api.scripting.registerContentScripts(plan.map(function (entry) {
+    return Object.assign({ runAt: 'document_start', allFrames: false, persistAcrossSessions: true }, entry);
+  }));
 }
 
 var syncing = Promise.resolve();

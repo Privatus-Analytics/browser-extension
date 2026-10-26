@@ -1,17 +1,27 @@
 /*
  * Mode A content script. Registered (scripting.registerContentScripts) ONLY
- * for domains the user listed (and, for 30 days, domains they removed so the
- * flag can be cleaned up). Runs at document_start in the isolated world;
- * localStorage is shared with the page's origin, which is what pa.js reads.
+ * for domains the user listed, while the opt-out flag mode is on. It runs at
+ * document_start in the isolated world; localStorage is shared with the
+ * page's origin, which is what pa.js reads.
  *
- * Reads the extension's own storage; sends nothing anywhere except a local
- * message to this extension's background (for the badge counter).
+ * The flag is set straight away, before any page script runs, so even an
+ * inline tracker on the very first visit sees it. Storage is read afterwards
+ * only to undo that if the site was removed a moment ago.
+ *
+ * Sends nothing anywhere except a local message to this extension's
+ * background (for the badge counter).
  */
 (function () {
   'use strict';
   var api = typeof browser !== 'undefined' ? browser : chrome;
   var KEY = 'privatus_optout';
   var host = location.hostname.toLowerCase();
+
+  try {
+    localStorage.setItem(KEY, '1');
+  } catch (e) {
+    return; // storage blocked on this page
+  }
 
   function matches(domain) {
     return host === domain || host.slice(-(domain.length + 1)) === '.' + domain;
@@ -23,27 +33,17 @@
     );
   }
 
-  api.storage.local.get(['domains', 'cleanup', 'modeLocalStorage']).then(function (s) {
+  function report() {
+    api.runtime.sendMessage({ type: 'optout-pageload', trackerDetected: trackerPresent() })
+      .catch(function () { /* background asleep / reloading */ });
+  }
+
+  api.storage.local.get(['domains', 'modeLocalStorage']).then(function (s) {
     var listed = (s.domains || []).some(function (e) { return matches(e.domain); });
-    var cleanup = (s.cleanup || []).some(function (e) { return matches(e.domain); });
-    var modeA = s.modeLocalStorage !== false;
-
-    try {
-      if (listed && modeA) {
-        localStorage.setItem(KEY, '1');
-      } else if (cleanup || (listed && !modeA)) {
-        if (localStorage.getItem(KEY) === '1') localStorage.removeItem(KEY);
-        return;
-      } else {
-        return;
-      }
-    } catch (e) {
-      return; // storage blocked on this page
-    }
-
-    function report() {
-      api.runtime.sendMessage({ type: 'optout-pageload', trackerDetected: trackerPresent() })
-        .catch(function () { /* background asleep / reloading */ });
+    if (!listed || s.modeLocalStorage === false) {
+      // Settings changed before the registration caught up.
+      try { localStorage.removeItem(KEY); } catch (e) { /* blocked */ }
+      return;
     }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', report, { once: true });

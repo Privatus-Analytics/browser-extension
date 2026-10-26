@@ -13,6 +13,7 @@
 
   var DEFAULT_ENDPOINT_PATTERNS = ['/api/event^'];
   var CONTENT_SCRIPT_ID = 'privatus-optout';
+  var CLEANUP_SCRIPT_ID = 'privatus-cleanup';
   var RULE_ID_BASE = 1000;
   var MAX_RULES = 100;
   var CLEANUP_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -98,6 +99,37 @@
   }
 
   /**
+   * Which content scripts to register, given the domains we have site access
+   * to. Two scripts, so the opt-out one can set the flag at once, before any
+   * page script runs, without first reading storage:
+   *  - optout: listed domains while the opt-out flag mode is on;
+   *  - cleanup: removed domains (for 30 days) and, while the mode is off,
+   *    listed domains. Never on a page the optout script covers.
+   * Returns registerContentScripts entries (without the static fields).
+   */
+  function planContentScripts(settings, grantedDomains) {
+    var s = withDefaults(settings);
+    var granted = (grantedDomains || []).map(normalizeHostname).filter(Boolean);
+    var has = function (d) { return granted.indexOf(normalizeHostname(d)) >= 0; };
+    var listed = s.domains.map(function (e) { return e.domain; }).filter(has);
+    var removed = s.cleanup.map(function (e) { return e.domain; }).filter(has);
+    var optoutDomains = s.modeLocalStorage ? listed : [];
+    var cleanupDomains = removed.concat(s.modeLocalStorage ? [] : listed)
+      .filter(function (d) { return !findDomainFor(d, optoutDomains); });
+    var out = [];
+    if (optoutDomains.length) {
+      out.push({ id: CONTENT_SCRIPT_ID, js: ['content/optout.js'], matches: matchesForDomains(optoutDomains) });
+    }
+    if (cleanupDomains.length) {
+      var entry = { id: CLEANUP_SCRIPT_ID, js: ['content/cleanup.js'], matches: matchesForDomains(cleanupDomains) };
+      // A listed subdomain of a removed domain keeps its flag.
+      if (optoutDomains.length) entry.excludeMatches = matchesForDomains(optoutDomains);
+      out.push(entry);
+    }
+    return out;
+  }
+
+  /**
    * Validates and normalises an endpoint pattern into a declarativeNetRequest
    * urlFilter. Accepts:
    *  - a path: "/api/event", "/stats/api/event"
@@ -112,14 +144,19 @@
     if (!p || p.length > 500) return null;
     if (/[\s"'<>\\]/.test(p) || /[^\x21-\x7e]/.test(p)) return null; // ASCII, no spaces
     if (p.indexOf('||') === 0 || p.charAt(0) === '|' || p.indexOf('*') >= 0 || p.indexOf('^') >= 0) {
-      return p.replace(/^\|\|\*/, '||');
+      // "||*.example.com" -> "||example.com": "||" already covers subdomains,
+      // and "||.example.com" would never match.
+      return p.replace(/^\|\|\*\.?/, '||');
     }
     if (/^https?:\/\//i.test(p)) return '|' + p;
     if (p.charAt(0) === '/') return p;
     var slash = p.indexOf('/');
-    var host = normalizeHostname(slash >= 0 ? p.slice(0, slash) : p);
+    var hostPart = slash >= 0 ? p.slice(0, slash) : p;
+    var port = /:(\d{1,5})$/.exec(hostPart);
+    var host = normalizeHostname(port ? hostPart.slice(0, port.index) : hostPart);
     if (!host || host.indexOf('.') < 0) return null;
-    return '||' + host + (slash >= 0 ? p.slice(slash) : '/');
+    // Keep a port the user typed, or the filter could never match that URL.
+    return '||' + host + (port ? ':' + port[1] : '') + (slash >= 0 ? p.slice(slash) : '/');
   }
 
   /**
@@ -229,6 +266,7 @@
     DEFAULT_ENDPOINT_PATTERNS: DEFAULT_ENDPOINT_PATTERNS,
     DEFAULT_SETTINGS: DEFAULT_SETTINGS,
     CONTENT_SCRIPT_ID: CONTENT_SCRIPT_ID,
+    CLEANUP_SCRIPT_ID: CLEANUP_SCRIPT_ID,
     RULE_ID_BASE: RULE_ID_BASE,
     MAX_RULES: MAX_RULES,
     normalizeHostname: normalizeHostname,
@@ -238,6 +276,7 @@
     findDomainFor: findDomainFor,
     originPatternsFor: originPatternsFor,
     matchesForDomains: matchesForDomains,
+    planContentScripts: planContentScripts,
     endpointToUrlFilter: endpointToUrlFilter,
     buildDnrRules: buildDnrRules,
     diffDynamicRules: diffDynamicRules,

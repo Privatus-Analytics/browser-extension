@@ -17,18 +17,20 @@ handy for site owners, editors and developers.
 **Mode A — opt-out flag (the official mechanism).** When you enable a site, the
 extension asks for access to *that site only* (`optional_host_permissions`,
 requested at toggle time) and registers a content script for it with
-`chrome.scripting.registerContentScripts`. At `document_start` it sets
-`localStorage.privatus_optout = "1"` in the site's origin — exactly what
-`privatus.optOut()` does — and `pa.js` then sends nothing. Toggling off removes
-the flag immediately in the current tab and, for 30 days, on your next visit to
-any other origin of that site (subdomains have separate localStorage). No
-content script ever runs on sites you did not list.
+`chrome.scripting.registerContentScripts`. At `document_start`, before any
+page script runs, it sets `localStorage.privatus_optout = "1"` in the site's
+origin — exactly what `privatus.optOut()` does — and `pa.js` then sends nothing,
+even on the very first visit and even if the tracker is inlined. Toggling off
+removes the flag immediately in the current tab and, for 30 days, on your next
+visit to any other origin of that site (subdomains have separate localStorage)
+through a second, cleanup-only content script. No content script ever runs on
+sites you did not list.
 
 **Mode B — request blocking.** `declarativeNetRequest` dynamic rules block
 `POST` requests whose URL matches a tracker endpoint pattern when the request is
 initiated by a listed site (`condition.initiatorDomains`). The default pattern is
 `/api/event^` (urlFilter syntax: `^` = end or separator). Add more patterns if
-you need them, e.g. `privatusanalytics.com/api/event`. Blocking rules need no host
+you need them, e.g. `privatusstats.com/api/event`. Blocking rules need no host
 permission, so Mode B works even if you decline site access.
 
 Both modes are on by default; either can be switched off on the options page.
@@ -50,9 +52,6 @@ Both modes are on by default; either can be switched off on the options page.
 
 ### Limitations
 
-- Mode A sets the flag asynchronously at `document_start`; on the very first
-  visit a fast inline/non-deferred tracker could send one pageview before the flag
-  exists. Mode B covers that (and the flag persists for later visits).
 - Custom tracker endpoints on the same path as other `POST` APIs of your site would
   also be blocked for pages on listed sites — use a specific pattern.
 - The flag is per browser profile; incognito/private windows need the extension
@@ -60,12 +59,12 @@ Both modes are on by default; either can be switched off on the options page.
 
 ## Install (development / unpacked)
 
-`src/` is loadable as-is in both browsers (the manifest carries
+`src/` is loadable as-is in both browsers (the manifest has
 `background.service_worker` for Chrome and `background.scripts` for Firefox; each
 browser ignores the other key with a warning).
 
 - **Chrome**: `chrome://extensions` → Developer mode → *Load unpacked* → `src/`.
-- **Firefox** (128+): `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* → `src/manifest.json`.
+- **Firefox** (140+): `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* → `src/manifest.json`.
 
 ## Build store packages
 
@@ -90,12 +89,29 @@ node scripts/build.mjs --zip    # also dist/*.zip (needs `zip`)
 
 ## Tests
 
-Pure helpers (hostname normalisation, DNR rule builder, settings updates,
-manifest variants) are tested with the Node test runner:
+Pure helpers (hostname normalisation, DNR rule builder, content script plan,
+settings updates, manifest variants) are tested with the Node test runner:
 
 ```sh
-docker run --rm -v "$PWD":/w -w /w node:22 sh -c 'node --test'
+npm test
 ```
+
+End-to-end tests load the built extension into a real Chromium with
+Playwright, serve a local test site with the real `pa.js`, and drive the real
+options page and toolbar popup (both modes, subdomains, SPA navigation, custom
+endpoints, removing a site, worker and browser restarts, the badge):
+
+```sh
+npm run test:e2e        # HEADED=1 to watch
+```
+
+They use a test-only copy of the build (`test/e2e/.build/`) whose manifest
+grants the test hosts up front, because the site access prompt cannot be
+clicked in automation; one more test runs the shipped `dist/chrome` unchanged.
+The tracker is read from `../../../analytics/web/public/js/pa.js`; set
+`PA_TRACKER` to use another copy.
+
+`store/` holds the store listing text (`LISTING.md`) and images.
 
 ## License
 
