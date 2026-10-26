@@ -1,13 +1,13 @@
 :root {
   --bg: #ffffff; --fg: #111827; --muted: #6b7280; --border: #e5e7eb;
-  --accent: #4f46e5; --danger: #b91c1c; --field: #f9fafb;
+  --accent: #06755b; --on-accent: #ffffff; --danger: #b91c1c; --field: #f9fafb;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #111827; --fg: #f3f4f6; --muted: #9ca3af; --border: #374151; --accent: #818cf8; --danger: #f87171; --field: #1f2937; }
+  :root { --bg: #111827; --fg: #f3f4f6; --muted: #9ca3af; --border: #374151; --accent: #34cf9f; --on-accent: #032b24; --danger: #f87171; --field: #1f2937; }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
 body.popup { width: 320px; padding: 12px 14px; }
 body.options { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
 header { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
@@ -27,7 +27,7 @@ a { color: var(--accent); }
 input[type=text], textarea { flex: 1; min-width: 0; width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--field); color: var(--fg); font: inherit; }
 textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 .row input[type=text] { width: auto; }
-button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font: inherit; cursor: pointer; }
 button.secondary { background: transparent; color: var(--accent); }
 button.danger { background: transparent; border-color: var(--border); color: var(--danger); }
 .list { list-style: none; padding: 0; margin: 8px 0; border: 1px solid var(--border); border-radius: 8px; }

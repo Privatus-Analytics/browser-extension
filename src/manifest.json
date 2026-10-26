@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Privatus Analytics – Block my visits",
   "short_name": "Privatus Analytics opt-out",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Stop counting your own visits in Privatus Analytics, so your stats show only real visitors. Collects nothing.",
   "homepage_url": "https://privatusanalytics.com/docs/tracker/opt-out",
   "icons": {

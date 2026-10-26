@@ -60,9 +60,9 @@ async function shopWithPopup(host, kind = 'shop') {
 }
 
 function browserFrame({ host, shop, popupShot, title, sub }) {
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
-  *{box-sizing:border-box} body{margin:0;width:1280px;height:800px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-    background:linear-gradient(135deg,#4f46e5 0%,#3730a3 60%,#312e81 100%);position:relative}
+  return `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"><style>
+  *{box-sizing:border-box} body{margin:0;width:1280px;height:800px;overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:linear-gradient(135deg,#06755b 0%,#085d4a 55%,#032b24 100%);position:relative}
   .caption{position:absolute;left:56px;top:0;bottom:0;width:340px;display:flex;flex-direction:column;justify-content:center;color:#fff}
   .caption h1{font-size:44px;line-height:1.12;margin:0 0 18px;font-weight:750}
   .caption p{font-size:21px;line-height:1.45;margin:0;opacity:.95}
@@ -70,7 +70,7 @@ function browserFrame({ host, shop, popupShot, title, sub }) {
   .bar{height:60px;background:#f3f4f6;border-bottom:1px solid #d1d5db;display:flex;align-items:center;gap:12px;padding:0 14px}
   .dots{display:flex;gap:7px} .dots i{width:12px;height:12px;border-radius:50%;background:#d1d5db;display:block}
   .url{flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:7px 16px;font-size:14px;color:#374151}
-  .ext{width:32px;height:32px;border-radius:7px;background:#e0e7ff;display:flex;align-items:center;justify-content:center}
+  .ext{width:32px;height:32px;border-radius:7px;background:#d1fae9;display:flex;align-items:center;justify-content:center}
   .ext img{width:18px;height:18px}
   .shop{display:block;width:820px;height:600px}
   .popup{position:absolute;top:126px;right:46px;border-radius:10px;box-shadow:0 14px 44px rgba(0,0,0,.30);border:1px solid #d1d5db;background:#fff;overflow:hidden}
@@ -105,26 +105,44 @@ await options.setViewportSize({ width: 1280, height: 800 });
 await options.screenshot({ path: join(out, 'screenshot-3-options.png') });
 console.log('wrote', join(out, 'screenshot-3-options.png'));
 
+// Brand assets: the Privatus Analytics logo, brand greens and Inter.
+const logoSvg = readFileSync(join(root, 'src', 'icons', 'icon.svg'), 'utf8');
+const logo = (px) => logoSvg.replace('<svg ', `<svg width="${px}" height="${px}" `);
+const logoTile = (px) => `<span style="display:inline-flex;background:#fff;border-radius:${Math.round(px*0.3)}px;padding:${Math.round(px*0.12)}px;box-shadow:0 6px 18px rgba(0,0,0,.25)">${logo(px)}</span>`;
+const brandHead = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"><style>
+  *{box-sizing:border-box} body{margin:0;overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;
+  background:linear-gradient(135deg,#06755b 0%,#085d4a 55%,#032b24 100%)}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:600;opacity:.95}
+  h1{margin:0;font-weight:800;letter-spacing:-.02em} p{margin:0;opacity:.92}
+  .chip{display:inline-block;background:#a6f2d4;color:#032b24;font-weight:600;border-radius:999px}
+`;
+
 // Small promo tile 440x280 (Chrome Web Store, Edge).
-const iconCss = `background:url(${dataUri(icon128)}) center/contain no-repeat`;
-await render(`<!doctype html><html><head><meta charset="utf-8"><style>
-  body{margin:0;width:440px;height:280px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-    background:linear-gradient(135deg,#4f46e5,#312e81);color:#fff;display:flex;align-items:center;gap:22px;padding:0 30px;box-sizing:border-box}
-  .icon{width:96px;height:96px;flex:none;${iconCss};filter:drop-shadow(0 6px 16px rgba(0,0,0,.3))}
-  h1{font-size:30px;line-height:1.1;margin:0 0 10px;font-weight:750} p{font-size:17px;line-height:1.35;margin:0;opacity:.95}
-  small{display:block;margin-top:12px;font-size:13px;opacity:.8}
-  </style></head><body><div class="icon"></div><div><h1>Block my visits</h1>
-  <p>Stop counting your own visits, so your stats show real visitors.</p><small>For Privatus Analytics</small></div></body></html>`,
+await render(`${brandHead}
+  body{width:440px;height:280px;padding:30px 32px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .brand{font-size:16px} h1{font-size:31px;line-height:1.1} p{font-size:15.5px;line-height:1.4}
+  </style></head><body><div class="brand">${logoTile(32)}Privatus Analytics</div>
+  <h1>Don't count your own visits</h1><p>One click on your site. Your stats show only real visitors.</p></body></html>`,
   'promo-small-440x280.png', 440, 280);
 
-// Store logo 300x300 (Edge asks for 1:1, 300x300 recommended): the 128px icon
-// drawn as a vector at full size, so it is not blurry.
-await render(`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;width:300px;height:300px;background:transparent}</style></head><body>
-  <svg width="300" height="300" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="64" cy="64" r="60" fill="#4f46e5"/>
-    <circle cx="64" cy="64" r="32" fill="none" stroke="#fff" stroke-width="11"/>
-    <line x1="42" y1="86" x2="86" y2="42" stroke="#fff" stroke-width="11"/>
-  </svg></body></html>`, 'logo-300x300.png', 300, 300, { transparent: true });
+// Marquee promo tile 1400x560 (Chrome Web Store): message on the left, the real screenshot on the right.
+const shot1 = readFileSync(join(out, 'screenshot-1-popup-on.png'));
+await render(`${brandHead}
+  body{width:1400px;height:560px;display:flex;align-items:center;gap:56px;padding:0 70px}
+  .left{flex:1;display:flex;flex-direction:column;gap:22px}
+  .brand{font-size:24px} h1{font-size:58px;line-height:1.05} p{font-size:25px;line-height:1.4;max-width:560px}
+  .chip{font-size:17px;padding:7px 16px;align-self:flex-start}
+  .shot{width:640px;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  </style></head><body><div class="left"><div class="brand">${logoTile(48)}Privatus Analytics</div>
+  <h1>Stop counting your own visits</h1>
+  <p>One click on your site, and your stats show only real visitors.</p>
+  <span class="chip">Free · Collects nothing · No account</span></div>
+  <img class="shot" src="${dataUri(shot1)}"></body></html>`,
+  'marquee-1400x560.png', 1400, 560);
+
+// Store logo 300x300 (Edge asks for 1:1): the logo drawn as a vector at full size.
+await render(`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;width:300px;height:300px;background:transparent}</style></head><body>${logo(300)}</body></html>`,
+  'logo-300x300.png', 300, 300, { transparent: true });
 
 await browser.close();
 await site.close();
